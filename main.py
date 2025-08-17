@@ -5,7 +5,7 @@ from colorama import Fore, Style
 from services.code_act_agent.code_act_agent import CodeActAgent
 from services.llm_client.llm_client import LLMClient
 from services.code_executor.code_executor import CodeExecutor
-from utils.utils import read_file_content
+from utils.utils import read_file_content, generate_unique_id, ensure_directory
 from config import logging_config
 import logging
 
@@ -31,13 +31,31 @@ async def main():
     # Load the LLMClient, CodeExecutor
     llm_client = LLMClient(base_url=os.getenv('ANTHROPIC_BASE_URL'), api_key=os.getenv('ANTHROPIC_API_KEY'))
     code_executor = CodeExecutor(allowed_filesystem_paths=['/Users/adsingh/Desktop/R&D_Projects/self_improving_agents/datasets'], allowed_file_modes=['r', 'w'])
+    
+    # Generate a unique ID corresponding to the conversation
+    conversation_id = generate_unique_id()
+    logging.info(f"{Fore.GREEN}{Style.BRIGHT}[+] Conversation created: {conversation_id}{Style.RESET_ALL}")
 
+    # Create conversation-workspace directory if not exists
+    workspace_path = f"/Users/adsingh/Desktop/R&D_Projects/self_improving_agents/datasets/workspace/{conversation_id}"
+    is_workspace_created = ensure_directory(workspace_path)
+
+    if not is_workspace_created:
+        raise FileExistsError(f"Unable to create directory at '{workspace_path}' path")
+    
+    # Currently we have hardcoded the dataset-name
+    dataset_name = "AirQualityUCI.csv"
+    
     # Spawn the agent
-    agent = CodeActAgent(conversation_id="2ae6269d-7963-4574-a37f-c934d158985d", system_prompt=system_prompt, llm_client=llm_client, code_executor=code_executor)
+    agent = CodeActAgent(conversation_id=conversation_id, system_prompt=system_prompt, llm_client=llm_client, code_executor=code_executor)
 
     while True:
         user_query = get_multiline_input()
-        
+        # Add the Workspace info to user-prompt
+        user_query += f"""\n\nDataset Paths:
+- Source: /Users/adsingh/Desktop/R&D_Projects/self_improving_agents/datasets/source/{dataset_name}
+- Worksapce Directory: /Users/adsingh/Desktop/R&D_Projects/self_improving_agents/datasets/workspace/{conversation_id}"""
+
         if not user_query.strip():
             print("Empty query. Exiting...")
             break

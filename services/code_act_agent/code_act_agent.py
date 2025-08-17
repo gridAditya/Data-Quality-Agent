@@ -64,7 +64,6 @@ class CodeActAgent:
 
         # Get the LLM response
         response = await self.llm_client.send_request(messages=messages, **kwargs)
-        
         return response
     
     def _parse_response(self, response: str) -> tuple[str, list[str]]:
